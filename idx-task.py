@@ -130,7 +130,7 @@ async def handle_browser_task(check_url, open_url):
                 logger.info("✅ 浏览器已关闭（超时）")
 
     else:
-        logger.warning('❌ 没有找到[xray-keep]')
+        logger.warning('❌ 没有找到[xray-keep] 需要登录')
         browser.quit()
         logger.info("🧹 尝试清理残留的 chromium 进程...")
         os.system("pkill -f chromium")
@@ -144,3 +144,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
