@@ -25,12 +25,12 @@ URL_CONFIGS = [
     {
         'check_url': 'idx外部地址1',
         'open_url': 'https://idx.google.com/xray-keep-55221223',
-        'interval': 600  # 每 5 分钟检查一次
+        'interval': 900  # 每 15 分钟检查一次
     },
     {
         'check_url': 'idx外部地址2',
         'open_url': 'https://idx.google.com/vpn-2-59362180',
-        'interval': 120  # 每 1 分钟检查一次
+        'interval': 600  # 每 10 分钟检查一次
     },
     # 可以继续添加更多配置项
 ]
@@ -55,7 +55,7 @@ async def check_url_loop(config):
         logger.info(f"{check_url} 返回 {first_line}")
 
         if "HTTP/2 200" not in output:
-            logger.info(f"✅ 创建浏览器打开指定页面 [{open_url}]")
+            logger.warning(f"✅ 创建浏览器打开指定页面 [{open_url}]")
             await handle_browser_task(check_url, open_url)
 
         await asyncio.sleep(interval)
@@ -75,8 +75,7 @@ async def handle_browser_task(check_url, open_url):
 
     #打开主页
     tab.get(URL_INDEX)
-    
-    #查找登录后的页面关键字 找到说明登录成功 登录成功后打开项目
+    #查找指定关键字 没有找到说明登录失败
     ele = tab.ele('xpath://*[contains(text(), "xray-keep")]', timeout=30)
 
     if 'xray-keep' in tab.html:
@@ -102,7 +101,7 @@ async def handle_browser_task(check_url, open_url):
                 logger.info(f"[monitor] {check_url} {first_line}")
 
                 if "HTTP/2 200" in output:
-                    logger.info("🟢 curl 检测到 HTTP/2 200，10 秒后关闭浏览器释放资源")
+                    logger.info(f"🟢 curl 检测到 {check_url} HTTP/2 200，10 秒后关闭浏览器释放资源")
                     stop_event.set()
                     await asyncio.sleep(10)
                     browser.quit()
@@ -116,14 +115,24 @@ async def handle_browser_task(check_url, open_url):
         monitor_task = asyncio.create_task(monitor_http_status())
 
         try:
-            await asyncio.wait_for(stop_event.wait(), timeout=250)
+            await asyncio.wait_for(stop_event.wait(), timeout=220)
         except asyncio.TimeoutError:
-            logger.info('🔄 已过4分钟，刷新页面...')
+            logger.info(f'🔄 已过3分钟，刷新页面{open_url}...')
             tab.refresh()
             try:
-                await asyncio.wait_for(stop_event.wait(), timeout=120)
+                await asyncio.wait_for(stop_event.wait(), timeout=220)
             except asyncio.TimeoutError:
-                logger.info("⏳ 页面已打开额外 100 秒，关闭浏览器")
+                # 取消监控任务
+                logger.info("🛑 正在取消 monitor_task ...")
+                monitor_task.cancel()
+                try:
+                    await monitor_task
+                except asyncio.CancelledError:
+                    logger.info("🛑 monitor_task 已取消")
+                except Exception as e:
+                    logger.warning(f"⚠️ monitor_task 取消时发生异常: {e}")
+
+                logger.info("⏳ 页面已打开额外 200 秒，关闭浏览器")
                 browser.quit()
                 logger.info("🧹 尝试清理残留的 chromium 进程...")
                 os.system("pkill -f chromium")
@@ -144,4 +153,3 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
-
