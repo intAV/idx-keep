@@ -9,8 +9,14 @@
 
 # lunes-keep
 使用chromium浏览器绕过cloudflare-turnstile验证码
-### 1."Xvfb :99 -screen 0 1024x768x24 &" 启动虚拟显示屏幕
-### 2.pyautogui.locate("./pic/button_image.png", "./pic/browser_screenshot.png") 使用图像匹配找到按钮，需要手动在browser_screenshot.png截取验证码按钮并保存为button_image.png
+### 1.启动虚拟显示屏幕
+```markdown
+Xvfb :99 -screen 0 1024x768x24 &
+```
+### 2.使用图像匹配找到按钮，需要手动在browser_screenshot.png截取验证码按钮并保存为button_image.png
+```python
+pyautogui.locate("./pic/button_image.png", "./pic/browser_screenshot.png")
+```
 ### 3.🔴服务器上面点选验证码返回ERROR,安装桌面环境(成功绕过的关键)
 ### 4.登录成功查找关键字元素[my-server],需自己修改
 ### 5.用户名和密码143 144行
