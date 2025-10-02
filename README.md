@@ -15,11 +15,11 @@ Xvfb :99 -screen 0 1024x768x24 &
 ```
 ### 2.使用图像匹配找到按钮，需要手动在browser_screenshot.png截取验证码按钮并保存为button_image.png
 ```python
-pyautogui.locate("./pic/button_image.png", "./pic/browser_screenshot.png")
+location = pyautogui.locate("./pic/button_image.png", "./pic/browser_screenshot.png")
 ```
 ### 3.🔴服务器上面点选验证码返回ERROR,安装桌面环境(成功绕过的关键)
-### 4.登录成功查找关键字元素[my-server],需自己修改
-### 5.用户名和密码143 144行
+### 4.登录成功查找关键字元素[my-server],需自己修改 
+### 5.用户名和密码
 
 <img width="759" height="598" alt="image" src="https://github.com/user-attachments/assets/30ecea70-fe97-412c-aa0e-15c3d091cadc" />
 <img width="804" height="752" alt="image" src="https://github.com/user-attachments/assets/765ebe76-3349-4bc0-ad45-48b585dea075" />
