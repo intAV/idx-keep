@@ -6,7 +6,6 @@ import random
 import math
 import pyautogui
 import pyscreenshot as ImageGrab
-from PIL import ImageDraw
 from DrissionPage import Chromium, ChromiumOptions
 import schedule
 import logging
@@ -16,7 +15,6 @@ import logging
 
 class BeijingFormatter(logging.Formatter):
     converter = time.localtime  # 默认使用本地时间
-
     def formatTime(self, record, datefmt=None):
         # 将时间转换为北京时间（UTC+8）
         beijing_time = time.gmtime(record.created + 8 * 3600)
@@ -24,17 +22,13 @@ class BeijingFormatter(logging.Formatter):
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
 file_handler = logging.FileHandler('./lunes.log')
 file_handler.setLevel(logging.INFO)
-
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
-
 formatter = BeijingFormatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='[%Y-%m-%d %H:%M:%S]')
 file_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
-
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
@@ -109,7 +103,7 @@ def perform_zigzag_movement(start_x, start_y, end_x, end_y, total_duration=1.0):
         if i < len(points) - 1:
             time.sleep(random.uniform(0.02, 0.05))
 
-# ------------------ 浏览器与自动化 ------------------
+# ------------------ 浏览器初始化 ------------------
 
 def init_browser():
     co = ChromiumOptions()
@@ -118,57 +112,85 @@ def init_browser():
     co.set_argument('--no-sandbox')
     co.set_argument('--disable-dev-shm-usage')
     co.set_user_agent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0')
-    co.set_argument('--window-position=0,0')
     co.set_argument('--window-size=800,800')
     return Chromium(co)
+
+# ------------------ 工具函数 ------------------
+
+def capture_and_save(filename):
+    ImageGrab.grab().save(f"./pic/{filename}")
+    logger.info(f"📸 {filename} 截图完成")
+
+def submit_login(tab, email, password):
+    email_ele = tab.ele('xpath://*[@id="email"]')
+    password_ele = tab.ele('xpath://*[@id="password"]')
+
+    # 判断输入框是否已有值
+    email_val = email_ele.attr('value')
+    password_val = password_ele.attr('value')
+
+    if not email_val:
+        email_ele.input(email)
+
+    if not password_val:
+        password_ele.input(password)
+
+    # 点击登录按钮
+    tab.ele('xpath://button[@class="hover:scale-105 w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-200"]').click()
+    logger.info("✅ 已点击登录按钮")
+
+def save_password(image_name):
+    location = pyautogui.locate("./pic/save.png", f"./pic/{image_name}")
+    if location:
+        center = pyautogui.center(location)
+        human_like_click(center.x, center.y)
+        logger.info("✅ 已点击记住用户名和密码")
+
+def is_login(tab):
+    keys = '@text():my-server'
+    ele = tab.ele(keys, timeout=10)
+    if ele:
+        ele.click()
+        tab.wait.doc_loaded()
+        time.sleep(4)
+        logger.info(f"✅ 找到元素 [{keys}] 点击成功")
+        capture_and_save("ok.png")
+        return True
+    else:
+        logger.warning(f"⚠️ 等待10秒钟后,没有找到元素 [{keys}]")
+        return False
+
+# ------------------ 登录主函数 ------------------
 
 def login_and_capture(tab):
     try:
         logger.info("🚀 开始自动登录流程")
-        time.sleep(13)
-        ImageGrab.grab().save("./pic/browser_screenshot.png")
-        logger.info("📸 截图browser_screenshot.png完成,开始定位按钮")
+        time.sleep(4)
+        capture_and_save("browser_screenshot.png")
 
         location = pyautogui.locate("./pic/button_image.png", "./pic/browser_screenshot.png")
-        if location is None:
-            raise ValueError("未找到匹配图像")
+        if location:
+            center = pyautogui.center(location)
+            logger.info(f"✅ 找到验证码坐标：x={center.x}, y={center.y}")
+            human_like_click(center.x, center.y)
+            time.sleep(9)
+        
+        capture_and_save("yzm.png")
 
-        center = pyautogui.center(location)
-        logger.info(f"✅ 找到坐标：x={center.x}, y={center.y}")
-        human_like_click(center.x, center.y)
-        time.sleep(5)
-        ImageGrab.grab().save("./pic/1.png")
-        logger.info("📸 1.png截图完成")
-
-        tab.ele('xpath://*[@id="email"]').input('用户名')
-        tab.ele('xpath://*[@id="password"]').input('密码')
-        tab.ele('xpath://button[@class="hover:scale-105 w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-200"]').click()
-        logger.info("✅ 已点击登录按钮")
-
+        # 开始登录
+        submit_login(tab, 用户名, 密码)
         time.sleep(8)
-        ImageGrab.grab().save("./pic/2.png")
-        location = pyautogui.locate("./pic/save.png", "./pic/2.png")
-        if location is None:
-            raise ValueError("未找到匹配图像")
+        capture_and_save("index.png")
 
-        center = pyautogui.center(location)
-        human_like_click(center.x, center.y)
-        time.sleep(2)
-        ImageGrab.grab().save("./pic/3.png")
-        logger.info("✅ 3.png截图完成")
+        # 浏览器记住密码
+        # save_password("index.png")
 
-        ele = tab.ele('@text():my-server')
-        if ele:
-            logger.info("✅ 找到元素[my-server],开始点击")
-            ele.click()
-            time.sleep(5)
-            ImageGrab.grab().save("./pic/4.png")
-            logger.info("📸 4.png截图完成")
-        else:
-            logger.info("❌ 页面中未找到包含 [my-server] 的元素")
+        # 打开指定页面
+        return is_login(tab)
 
     except Exception as e:
-        logger.error(f"❌ 操作过程中出现错误: {e}")
+        logger.error(f"❌ 登录过程中出现错误: {e}")
+        return False
 
 # ------------------ 主入口 ------------------
 
@@ -181,16 +203,14 @@ def main():
         tab.wait.doc_loaded()
         logger.info("✅ 页面已加载完成")
 
-        ele = tab.ele('@text():my-server')
-        if ele:
-            logger.info("✅ 找到元素[my-server],开始点击")
-            ele.click()
-            time.sleep(5)
-            ImageGrab.grab().save("./pic/4.png")
-            logger.info("📸 4.png截图完成")
-        else:
-            logger.info("❌ 页面中未找到包含 [my-server] 的元素")
-            login_and_capture(tab)
+        # 最多尝试登录 3 次
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            if is_login(tab):
+                break
+            if login_and_capture(tab):
+                break
+            logger.warning("⚠️ 登录尝试失败，准备下一次尝试")
 
     except Exception as e:
         logger.error(f"❌ 主流程发生异常: {e}")
@@ -199,11 +219,8 @@ def main():
         browser.quit()
         logger.info("✅ 浏览器已关闭")
 
-
-
-
 # ------------------ 定时任务调度 ------------------
-
+# main()
 schedule.every().day.at("16:00").do(main)
 
 logger.info("🕒 定时任务已启动,将在北京时间每天00:00执行")
