@@ -184,7 +184,7 @@ def login_and_capture(tab):
         capture_and_save("index.png")
 
         # 浏览器记住密码
-        save_password("index.png")
+        # save_password("index.png")
 
         # 打开指定页面
         return is_login(tab)
@@ -229,3 +229,4 @@ logger.info("🕒 定时任务已启动,将在北京时间每天00:00执行")
 while True:
     schedule.run_pending()
     time.sleep(20)
+
