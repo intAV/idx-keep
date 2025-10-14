@@ -32,6 +32,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
+
 # ------------------ 人类化点击 ------------------
 
 def human_like_click(x, y, click_duration=0.1, movement_intensity=25, total_move_duration=0.918):
@@ -228,3 +229,4 @@ logger.info("🕒 定时任务已启动,将在北京时间每天00:00执行")
 while True:
     schedule.run_pending()
     time.sleep(20)
+
