@@ -1,232 +1,153 @@
-# -*- coding: utf-8 -*-
-import os
 import sys
-import time
-import random
-import math
-import pyautogui
-import pyscreenshot as ImageGrab
-from DrissionPage import Chromium, ChromiumOptions
-import schedule
+import os
+import asyncio
 import logging
+from DrissionPage import Chromium, ChromiumOptions
 
-
-# ------------------ 日志配置 ------------------
-
-class BeijingFormatter(logging.Formatter):
-    converter = time.localtime  # 默认使用本地时间
-
-    def formatTime(self, record, datefmt=None):
-        # 将时间转换为北京时间（UTC+8）
-        beijing_time = time.gmtime(record.created + 8 * 3600)
-        return time.strftime(datefmt, beijing_time)
-
+# 日志配置
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-file_handler = logging.FileHandler('./lunes.log')
+file_handler = logging.FileHandler('./app.log')
 file_handler.setLevel(logging.INFO)
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
-formatter = BeijingFormatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='[%Y-%m-%d %H:%M:%S]')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='[%Y-%m-%d %H:%M:%S]')
 file_handler.setFormatter(formatter)
 console_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
-# ------------------ 人类化点击 ------------------
 
-def human_like_click(x, y, click_duration=0.1, movement_intensity=25, total_move_duration=0.918):
-    current_x, current_y = pyautogui.position()
-    movement_type = random.choice(['direct', 'curved', 'zigzag'])
+# 每个 URL 配置：检查地址、打开地址、查找元素、轮询间隔（单位：秒）
+URL_CONFIGS = [
+    {
+        'check_url': 'https://bashinfo.zhouhuimin.qzz.io/',
+        'open_url': 'https://idx.google.com/',
+        'keys': 'xray-keep',
+        'interval': 600
+    },
+    {
+        'check_url': 'http://node23.lunes.host:3112/',
+        'open_url': 'https://ctrl.lunes.host/',
+        'keys': 'my-server',
+        'interval': 600
+    }
+]
 
-    if movement_type == 'direct':
-        move_time = total_move_duration * 0.7
-        pyautogui.moveTo(x, y, duration=move_time)
-        adjust_time = total_move_duration * 0.3
-        pyautogui.moveRel(random.randint(-5, 5), random.randint(-5, 5), duration=adjust_time)
+MONITOR_INTERVAL = 10  # 浏览器任务中的 curl 检测间隔
 
-    elif movement_type == 'curved':
-        generate_random_movement_trajectory(current_x, current_y, x, y, intensity=movement_intensity, total_duration=total_move_duration)
+async def check_url_loop(config):
+    check_url = config['check_url']
+    open_url = config['open_url']
+    keys = config['keys']
+    interval = config['interval']
 
-    elif movement_type == 'zigzag':
-        perform_zigzag_movement(current_x, current_y, x, y, total_duration=total_move_duration)
+    while True:
+        proc = await asyncio.create_subprocess_exec(
+            'curl', '-i', check_url,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await proc.communicate()
+        output = stdout.decode()
 
-    time.sleep(random.uniform(0.05, 0.15))
-    pyautogui.click(duration=click_duration)
-    time.sleep(random.uniform(0.1, 0.2))
+        first_line = output.split('\n', 1)[0].rstrip('\r\n') if output else "No output"
+        logger.info(f"{check_url} 返回 {first_line}")
 
-def generate_random_movement_trajectory(start_x, start_y, end_x, end_y, intensity=50, total_duration=1.0):
-    dx = end_x - start_x
-    dy = end_y - start_y
-    distance = math.sqrt(dx**2 + dy**2)
-    if distance < 10:
-        pyautogui.moveTo(end_x, end_y, duration=total_duration)
-        return
+        if "200" not in first_line:
+            logger.warning(f"✅ 创建浏览器打开指定页面 [{open_url}]")
+            await handle_browser_task(check_url, open_url, keys)
 
-    base_steps = max(8, min(20, int(distance / 20)))
-    steps = random.randint(base_steps - 2, base_steps + 2)
-    points = []
+        await asyncio.sleep(interval)
 
-    for i in range(1, steps):
-        progress = i / steps
-        linear_x = start_x + dx * progress
-        linear_y = start_y + dy * progress
-        offset_x = random.randint(-intensity, intensity)
-        offset_y = random.randint(-intensity, intensity)
-        factor = 1 - progress * 0.8
-        final_x = linear_x + offset_x * factor
-        final_y = linear_y + offset_y * factor
-        points.append((final_x, final_y))
 
-    points.append((end_x, end_y))
-    base_time = total_duration / len(points)
-
-    for i, (px, py) in enumerate(points):
-        duration = base_time * random.uniform(0.7, 1.3)
-        pyautogui.moveTo(px, py, duration=duration)
-        if i < len(points) - 1:
-            time.sleep(random.uniform(0.01, 0.03))
-
-def perform_zigzag_movement(start_x, start_y, end_x, end_y, total_duration=1.0):
-    mid_x = (start_x + end_x) / 2
-    mid_y = (start_y + end_y) / 2
-    offset1 = random.randint(20, 50) * random.choice([-1, 1])
-    offset2 = random.randint(15, 40) * random.choice([-1, 1])
-    points = [(start_x, start_y),
-              (mid_x + offset1, mid_y + offset1),
-              (mid_x - offset2, mid_y - offset2),
-              (end_x, end_y)]
-    base_time = total_duration / len(points)
-
-    for i, (px, py) in enumerate(points):
-        duration = base_time * random.uniform(0.8, 1.2)
-        pyautogui.moveTo(px, py, duration=duration)
-        if i < len(points) - 1:
-            time.sleep(random.uniform(0.02, 0.05))
-
-# ------------------ 浏览器初始化 ------------------
-
-def init_browser():
-    co = ChromiumOptions()
-    co.set_paths(browser_path='/usr/bin/chromium-browser')
+async def handle_browser_task(check_url, open_url, keys):
+    co = ChromiumOptions().headless()
+    co.set_paths(browser_path='/var/lib/snapd/snap/bin/chromium')
     co.set_user_data_path('./Default')
+    co.set_proxy('http://192.168.200.14:10888')
     co.set_argument('--no-sandbox')
     co.set_argument('--disable-dev-shm-usage')
-    co.set_user_agent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0')
-    co.set_argument('--window-size=800,800')
-    return Chromium(co)
+    co.set_user_agent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36')
 
-# ------------------ 工具函数 ------------------
+    browser = Chromium(co)
+    tab = browser.new_tab()
 
-def capture_and_save(filename):
-    ImageGrab.grab().save(f"./pic/{filename}")
-    logger.info(f"📸 {filename} 截图完成")
+    tab.get(open_url)
+    #查找指定关键字 没有找到说明登录失败
+    ele = tab.ele(f'xpath://*[contains(text(), "{keys}")]', timeout=30)
 
-def submit_login(tab, email, password):
-    email_ele = tab.ele('xpath://*[@id="email"]')
-    password_ele = tab.ele('xpath://*[@id="password"]')
-
-    # 判断输入框是否已有值
-    email_val = email_ele.attr('value')
-    password_val = password_ele.attr('value')
-
-    if not email_val:
-        email_ele.input(email)
-
-    if not password_val:
-        password_ele.input(password)
-
-    # 点击登录按钮
-    tab.ele('xpath://button[@class="hover:scale-105 w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition duration-200"]').click()
-    logger.info("✅ 已点击登录按钮")
-
-def save_password(image_name):
-    location = pyautogui.locate("./pic/save.png", f"./pic/{image_name}")
-    if location:
-        center = pyautogui.center(location)
-        human_like_click(center.x, center.y)
-        logger.info("✅ 已点击记住用户名和密码")
-
-def is_login(tab):
-    keys = '@text():my-server'
-    ele = tab.ele(keys, timeout=10)
-    if ele:
+    if keys in tab.html:
+        logger.info(f'✅ 在 {open_url} 找到[{keys}]')
         ele.click()
         tab.wait.doc_loaded()
-        time.sleep(4)
-        logger.info(f"✅ 找到元素 [{keys}] 点击成功")
-        capture_and_save("ok.png")
-        return True
+        logger.info(f'🚀 正在打开页面 [{open_url}][{keys}]')
+
+        stop_event = asyncio.Event()
+
+        async def monitor_http_status():
+            while not stop_event.is_set():
+                proc = await asyncio.create_subprocess_exec(
+                    'curl', '-i', check_url,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, _ = await proc.communicate()
+                output = stdout.decode()
+
+                first_line = output.split('\n', 1)[0].rstrip('\r\n') if output else "No output"
+                logger.info(f"[monitor] {check_url} {first_line}")
+
+                if "200" in first_line:
+                    logger.info(f"🟢 curl 检测到 {check_url} HTTP/2 200，10 秒后关闭浏览器释放资源")
+                    stop_event.set()
+                    await asyncio.sleep(10)
+                    browser.quit()
+                    logger.info("🧹 尝试清理残留的 chromium 进程...")
+                    os.system("pkill -f chromium 2>/dev/null")
+                    logger.info("✅ 浏览器已关闭")
+                    return
+
+                await asyncio.sleep(MONITOR_INTERVAL)
+
+        monitor_task = asyncio.create_task(monitor_http_status())
+
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=220)
+        except asyncio.TimeoutError:
+            logger.info(f'🔄 已过3分钟，刷新页面{open_url}...')
+            tab.refresh()
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=200)
+            except asyncio.TimeoutError:
+                # 取消监控任务
+                logger.info("🛑 正在取消 monitor_task ...")
+                monitor_task.cancel()
+                try:
+                    await monitor_task
+                except asyncio.CancelledError:
+                    logger.info("🛑 monitor_task 已取消")
+                except Exception as e:
+                    logger.warning(f"⚠️ monitor_task 取消时发生异常: {e}")
+
+                logger.info("⏳ 页面已打开额外 200 秒，关闭浏览器")
+                browser.quit()
+                logger.info("🧹 尝试清理残留的 chromium 进程...")
+                os.system("pkill -f chromium")
+                logger.info("✅ 浏览器已关闭（超时）")
+
     else:
-        logger.warning(f"⚠️ 等待10秒钟后,没有找到元素 [{keys}]")
-        return False
-
-# ------------------ 登录主函数 ------------------
-
-def login_and_capture(tab):
-    try:
-        logger.info("🚀 开始自动登录流程")
-        time.sleep(4)
-        capture_and_save("browser_screenshot.png")
-
-        location = pyautogui.locate("./pic/button_image.png", "./pic/browser_screenshot.png")
-        if location:
-            center = pyautogui.center(location)
-            logger.info(f"✅ 找到验证码坐标：x={center.x}, y={center.y}")
-            human_like_click(center.x, center.y)
-            time.sleep(9)
-        
-        capture_and_save("yzm.png")
-
-        # 开始登录
-        submit_login(tab, 用户名, 密码)
-        time.sleep(8)
-        capture_and_save("index.png")
-
-        # 浏览器记住密码
-        # save_password("index.png")
-
-        # 打开指定页面
-        return is_login(tab)
-
-    except Exception as e:
-        logger.error(f"❌ 登录过程中出现错误: {e}")
-        return False
-
-# ------------------ 主入口 ------------------
-
-def main():
-    logger.info("🚀 00:00时间到,登录账号")
-    browser = init_browser()
-    try:
-        tab = browser.new_tab()
-        tab.get("https://betadash.lunes.host/")
-        tab.wait.doc_loaded()
-        logger.info("✅ 页面已加载完成")
-
-        # 最多尝试登录 3 次
-        max_attempts = 3
-        for attempt in range(1, max_attempts + 1):
-            if is_login(tab):
-                break
-            if login_and_capture(tab):
-                break
-            logger.warning("⚠️ 登录尝试失败，准备下一次尝试")
-
-    except Exception as e:
-        logger.error(f"❌ 主流程发生异常: {e}")
-
-    finally:
+        logger.warning(f'❌ 没有找到[{keys}] 需要登录')
         browser.quit()
-        logger.info("✅ 浏览器已关闭")
+        logger.info("🧹 尝试清理残留的 chromium 进程...")
+        os.system("pkill -f chromium")
+        logger.info("✅ 浏览器已关闭（未找到关键字）")
 
-# ------------------ 定时任务调度 ------------------
-# main()
-schedule.every().day.at("16:00").do(main)
 
-logger.info("🕒 定时任务已启动,将在北京时间每天00:00执行")
 
-while True:
-    schedule.run_pending()
-    time.sleep(20)
+async def main():
+    tasks = [check_url_loop(config) for config in URL_CONFIGS]
+    await asyncio.gather(*tasks)
 
+if __name__ == '__main__':
+    asyncio.run(main())
