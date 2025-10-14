@@ -29,3 +29,4 @@ else
     export DISPLAY=:99
     python3 lunes.py
 fi
+
