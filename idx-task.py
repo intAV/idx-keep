@@ -4,6 +4,7 @@ import asyncio
 import logging
 from DrissionPage import Chromium, ChromiumOptions
 
+
 # 日志配置
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -151,3 +152,4 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
