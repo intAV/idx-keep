@@ -9,6 +9,9 @@
 <img width="922" height="619" alt="image" src="https://github.com/user-attachments/assets/2d34cf9e-3c74-4edc-9266-ee5ad6280854" />
 
 # lunes-keep
+---------------------
+由于长期没更新 lunes账号已被封 它网站登录首页老是在不停更新导致匹配出错被检测
+---------------------
 使用chromium浏览器绕过cloudflare-turnstile验证码
 ### 1.启动虚拟显示屏幕
 ```markdown
