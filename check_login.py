@@ -22,7 +22,7 @@ def test(url, keys):
     else:
         print(f'❌ 在 {url} 没有找到[{keys}]')
 
-
+# 检查cookie是否过期
 # 执行多个测试，每个都在新标签页中打开
 test('https://idx.google.com/', 'xray-keep')
 test('https://idx.google.com/', 'flask-keep')
