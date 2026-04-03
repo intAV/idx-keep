@@ -13,6 +13,9 @@
 ### 由于长期没更新 lunes账号已被封 它网站登录首页老是在不停更新导致匹配出错被检测，给大家一个绕过cf验证码的思路
 ---------------------
 使用chromium浏览器绕过cloudflare-turnstile验证码
+### 无意中发现这玩意儿还可以开放纯净的TCP端口和UDP端口 简直神了 但是貌似只能开一个</br>
+<img width="983" height="208" alt="image" src="https://github.com/user-attachments/assets/723844c9-ef2f-42e8-90e8-19c1137f565d" />
+
 ### 1.启动虚拟显示屏幕
 ```markdown
 Xvfb :99 -screen 0 1024x768x24 &
